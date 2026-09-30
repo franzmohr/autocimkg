@@ -83,3 +83,5 @@ Note that an existing KG can only be maintained with the embeddings model it was
 Moreover, smaller local models tend to produce invalid JSON more often, which AutoCimKG answers with retries (see ```max_tries``` parameters).
 ## Usage
 An exemplary utilisation of AutoCimKG is provided in the ```tutorial```.
+## Use in AI Agents (e.g. Microsoft Copilot Studio)
+The folder ```mcp_server``` contains a standalone MCP server that exposes stored competency KGs as read-only tools (e.g. finding experts for a topic), which agents in Microsoft Copilot Studio and Microsoft 365 Copilot can call (authenticated via Entra ID or an API key). See its README for setup.

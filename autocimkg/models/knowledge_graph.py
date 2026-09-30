@@ -5,7 +5,7 @@ import numpy as np
 import re
 
 class EntityProperties(BaseModel):
-    embeddings: SkipValidation[np.array] = None
+    embeddings: SkipValidation[np.ndarray] = None
     generated_at_time: Union[datetime, None] = None
     invalidated_at_time: Union[datetime, None] = None
     agents: list[str] = []
@@ -15,7 +15,7 @@ class EntityProperties(BaseModel):
         arbitrary_types_allowed = True
         
 class RelationshipProperties(BaseModel):
-    embeddings: SkipValidation[np.array] = None
+    embeddings: SkipValidation[np.ndarray] = None
     generated_at_time: Union[datetime, None] = None
     invalidated_at_time: Union[datetime, None] = None
     agents: list[str] = []

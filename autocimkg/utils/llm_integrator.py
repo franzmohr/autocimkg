@@ -1,12 +1,10 @@
 from langchain_core.exceptions import OutputParserException
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 import time
 from typing import Union
 import numpy as np
-import logging
-import sys
-from importlib import reload
+from .logger import create_logger
 
 # provider-independent detection of errors worth retrying (rate limits, overload, timeouts, bad requests, ...)
 RETRYABLE_ERROR_NAMES = ("RateLimit", "BadRequest", "Timeout", "Connect", "ServiceUnavailable", "InternalServer",
@@ -50,15 +48,7 @@ class LLMIntegrator:
 
         # stdout logger
         if self.logger is None:
-            reload(logging)
-            self.logger = logging.getLogger("autocimkg")
-            self.logger.setLevel(logging.DEBUG)
-            formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                                               datefmt="%Y-%m-%d %H:%M:%S")
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(formatter)
-            console_handler.setLevel(logging.DEBUG)
-            self.logger.addHandler(console_handler)
+            self.logger = create_logger()
 
 
     def calculate_embeddings(self, text: Union[str, list[str]]) -> np.ndarray:

@@ -3,9 +3,7 @@ from datetime import datetime
 import age
 import numpy as np
 from ..models import KnowledgeGraph, Relationship, Entity
-import logging
-import sys
-from importlib import reload
+from ..utils.logger import create_logger
 from typing import Union
 
 class GraphIntegrator:
@@ -31,15 +29,7 @@ class GraphIntegrator:
         self.password = password
 
         # stdout logger
-        reload(logging)
-        self.logger = logging.getLogger("autocimkg")
-        self.logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                                      datefmt="%Y-%m-%d %H:%M:%S")
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(logging.DEBUG)
-        self.logger.addHandler(console_handler)
+        self.logger = create_logger()
 
     def create_graph(self, graph_name: str):
         """

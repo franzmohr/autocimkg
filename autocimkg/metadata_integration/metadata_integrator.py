@@ -1,10 +1,8 @@
 import psycopg2
-import logging
-import sys
 import json
 
-from importlib import reload
 from ..models import Document, Ontology, KnowledgeGraphVersion, Log
+from ..utils.logger import create_logger
 
 class MetadataIntegrator:
     """
@@ -31,15 +29,7 @@ class MetadataIntegrator:
         self.password = password
 
         # stdout logger
-        reload(logging)
-        self.logger = logging.getLogger("autocimkg")
-        self.logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                                      datefmt="%Y-%m-%d %H:%M:%S")
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(logging.DEBUG)
-        self.logger.addHandler(console_handler)
+        self.logger = create_logger()
 
     def init_db(self):
         """

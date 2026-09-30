@@ -37,6 +37,7 @@ Changes compared to the original version (2026-09):
 - Support for further LLM providers besides OpenAI, including local models (see [LLM Providers](#llm-providers)); modified files: 'autocimkg/\_\_init\_\_.py', 'autocimkg/autocimkg_core.py', 'autocimkg/utils/\_\_init\_\_.py', 'autocimkg/utils/llm_integrator.py', 'tutorial/tutorial.ipynb'; new files: 'autocimkg/utils/llm_factory.py', 'requirements-optional.txt'.
 - A read-only MCP server that makes stored KGs available to AI agents (new folder 'mcp_server/').
 - Support for newer Python versions (v3.10 to v3.13) by replacing exact package versions with version ranges; modified files: 'requirements.txt', 'requirements-optional.txt'.
+- Installable package that also runs on Databricks clusters, w/ LangChain v0.3 or v1 (see [Databricks](#databricks)); the logging module is no longer reloaded and the tutorial reads PDFs w/ pypdf directly; modified files: 'README.md', 'requirements.txt', 'autocimkg/autocimkg_core.py', 'autocimkg/utils/llm_integrator.py', 'autocimkg/graph_integration/graph_integrator.py', 'autocimkg/metadata_integration/metadata_integrator.py', 'autocimkg/models/knowledge_graph.py', 'tutorial/tutorial.ipynb'; new files: 'pyproject.toml', 'autocimkg/utils/logger.py'; removed files: 'requirements-optional.txt' (replaced by extras).
 ## License Notice
 This software is based on and includes modified components of the [iText2KG library (v0.0.7)](https://github.com/AuvaLab/itext2kg), which is licensed under the GNU Lesser General Public Library (v2.1).
 The extensive changes and enhancements made are reflected in all files of the reused codebase and correspond to the overview given above. 
@@ -45,17 +46,49 @@ This software is therefore also licensed under LGPL-2.1 and a copy of the licens
 <br/>
 Y. Lairgi, L. Moncla, R. Cazabet, K. Benabdeslem, and P. Cléau, ‘iText2KG: Incremental Knowledge Graphs Construction Using Large Language Models’, in Web Information Systems Engineering – WISE 2024, vol. 15439, M. Barhamgi, H. Wang, and X. Wang, Eds., in Lecture Notes in Computer Science, vol. 15439. , Singapore: Springer, 2025, pp. 214–229. doi: 10.1007/978-981-96-0573-6_16.
 ## Installation
-The recommended way to use AutoCimKG is to download the library from GitHub and make it available in a desired Python project.
-This can take the form of a [PyCharm](https://www.jetbrains.com/pycharm/) Python project centered around a [Jupyter Notebook](https://jupyter.org/).
+AutoCimKG is a Python package and can be installed directly from GitHub, optionally with the extras of further LLM providers (see [LLM Providers](#llm-providers)):
+```bash
+pip install "autocimkg[ollama] @ git+https://github.com/franzmohr/autocimkg"
+```
+To work on AutoCimKG itself or run the tutorial, clone the repository and install it with ```pip install -r requirements.txt```. 
+This installs the package in editable mode, together with the tutorial's packages and the test tools.
+The tutorial can take the form of a [PyCharm](https://www.jetbrains.com/pycharm/) Python project centered around a [Jupyter Notebook](https://jupyter.org/).
 The library needs a chat as well as an embedding model, either hosted (e.g. via OpenAI's [developer platform](https://platform.openai.com/)) or running locally (e.g. via [Ollama](https://ollama.com/)).
 Moreover, AutoCimKG connects to a [PostgreSQL/Apache AGE database](https://age.apache.org/age-manual/master/intro/setup.html), if desired. 
 Another recommendation is to set up the terminal-based [psql](https://www.postgresql.org/docs/current/app-psql.html) 
 and [pgAdmin](https://www.pgadmin.org/) to inspect assembled property graphs as well as associated metadata and to query the competency KG (using SQL and Cypher).
 <br/>
 <br/>
-In general, AutoCimKG was developed with Python v3.9 and runs on Python v3.9 to v3.13 (tested with v3.12 and v3.13). 
-All required packages are listed in the 'requirements.txt' file as version ranges, so pip picks versions that suit the Python version in use. 
+In general, AutoCimKG was developed with Python v3.9 and runs on Python v3.9 to v3.13 (tested with v3.12 and v3.13), with LangChain v0.3 as well as v1. 
+The dependencies are defined in 'pyproject.toml' as version ranges, so pip picks versions that suit the Python version and the packages already installed. 
 The exact versions used in the master's thesis are those of the [original repository](https://github.com/gary4512/autocimkg/blob/main/requirements.txt).
+### Databricks
+On Databricks clusters (Databricks Runtime 14.3 LTS or later), install AutoCimKG as a notebook-scoped library and restart Python afterwards:
+```python
+%pip install "autocimkg @ git+https://github.com/franzmohr/autocimkg"
+dbutils.library.restartPython()
+```
+Alternatively, build a wheel (```python -m build```), upload it to a Unity Catalog volume and install it from there, e.g. as a cluster library.
+AutoCimKG works w/ the numpy, pandas, scikit-learn and psycopg2 versions preinstalled in the runtime, so no PostgreSQL build tools are needed on the cluster.
+On runtimes w/ pydantic v1 (14.3 LTS and 15.4 LTS), pip upgrades pydantic to v2 for the notebook. 
+Otherwise, pip installs the newest LangChain packages AutoCimKG supports and upgrades what they need, e.g. openai from v2 to v3 on 18 LTS.
+To keep all preinstalled versions instead (16.4 LTS or later), install AutoCimKG w/ the runtime's packages as constraints, so pip picks matching LangChain versions:
+```python
+from importlib.metadata import distributions
+runtime = {d.metadata["Name"].lower(): d.version for d in reversed(list(distributions())) if d.metadata["Name"]}
+with open("/Workspace/Users/<user>/runtime-constraints.txt", "w") as f:  # a path all nodes of the cluster can read
+    f.writelines(f"{name}=={version}\n" for name, version in runtime.items())
+```
+```python
+%pip install "autocimkg @ git+https://github.com/franzmohr/autocimkg" -c /Workspace/Users/<user>/runtime-constraints.txt
+dbutils.library.restartPython()
+```
+<br/>
+<br/>
+Some further hints for Databricks:
+- The PostgreSQL/Apache AGE database must be reachable from the cluster's network. Keep its password in a secret scope, e.g. ```dbutils.secrets.get("<scope>", "<key>")```.
+- Documents in Unity Catalog volumes can be read via their path, e.g. ```PdfReader("/Volumes/<catalog>/<schema>/<volume>/paper.pdf")```.
+- AutoCimKG logs to the notebook's output and leaves the runtime's logging configuration untouched.
 ## LLM Providers
 AutoCimKG accepts any [LangChain](https://www.langchain.com/) chat and embeddings model. 
 For common providers, ```create_chat_model()``` and ```create_embeddings_model()``` construct suitable models (incl. JSON output mode where supported):
@@ -73,18 +106,18 @@ embeddings_model = create_embeddings_model("ollama", "nomic-embed-text")
 # local via LM Studio, vLLM, llama.cpp, LocalAI, ... (OpenAI-compatible API)
 llm_model = create_chat_model("openai_compatible", "<model>", base_url="http://localhost:1234/v1")
 ```
-| Provider            | Chat | Embeddings | Package                  |
-|---------------------|------|------------|--------------------------|
-| `openai`            | yes  | yes        | `langchain-openai`       |
-| `azure_openai`      | yes  | yes        | `langchain-openai`       |
-| `openai_compatible` | yes  | yes        | `langchain-openai`       |
-| `ollama`            | yes  | yes        | `langchain-ollama`       |
-| `anthropic`         | yes  | -          | `langchain-anthropic`    |
-| `google_genai`      | yes  | yes        | `langchain-google-genai` |
-| `mistralai`         | yes  | yes        | `langchain-mistralai`    |
-| `huggingface`       | -    | yes        | `langchain-huggingface`  |
+| Provider            | Chat | Embeddings | Package                  | Extra         |
+|---------------------|------|------------|--------------------------|---------------|
+| `openai`            | yes  | yes        | `langchain-openai`       | (included)    |
+| `azure_openai`      | yes  | yes        | `langchain-openai`       | (included)    |
+| `openai_compatible` | yes  | yes        | `langchain-openai`       | (included)    |
+| `ollama`            | yes  | yes        | `langchain-ollama`       | `ollama`      |
+| `anthropic`         | yes  | -          | `langchain-anthropic`    | `anthropic`   |
+| `google_genai`      | yes  | yes        | `langchain-google-genai` | `google`      |
+| `mistralai`         | yes  | yes        | `langchain-mistralai`    | `mistralai`   |
+| `huggingface`       | -    | yes        | `langchain-huggingface`  | `huggingface` |
 
-Packages beyond ```langchain-openai``` are listed in 'requirements-optional.txt'. Further arguments are handed to the respective LangChain class. 
+Packages beyond ```langchain-openai``` are installed via the extra, e.g. ```pip install "autocimkg[anthropic] @ git+https://github.com/franzmohr/autocimkg"```. Further arguments are handed to the respective LangChain class. 
 ```get_model_config()``` describes a model without API keys, e.g. for storing it via ```MetadataIntegrator.create_llm_config()```.
 Note that an existing KG can only be maintained with the embeddings model it was built with, as entity and relationship resolution compares embeddings.
 Moreover, smaller local models tend to produce invalid JSON more often, which AutoCimKG answers with retries (see ```max_tries``` parameters).

@@ -2,15 +2,14 @@ import json
 import numpy as np
 import logging
 import io
-import sys
 
 from datetime import datetime
 from typing import Tuple, Any
-from importlib import reload
 from sklearn.metrics.pairwise import cosine_similarity
 from .ientities_extraction import iEntitiesExtractor
 from .irelations_extraction import iRelationsExtractor
 from .utils import Matcher, LLMIntegrator, get_model_config
+from .utils.logger import create_logger, LOG_FORMAT, LOG_DATE_FORMAT
 from .models import KnowledgeGraph, Entity, EntityProperties, Relationship, RelationshipProperties, Document, Employee, Ontology, AlignedEntity, Log
 
 
@@ -35,9 +34,8 @@ class AutoCimKGCore:
         self.llm_model = llm_model
         self.embeddings_model = embeddings_model
 
-        reload(logging)
         self.log = [] # list of log lists
-        self.logger = logging.getLogger("autocimkg")
+        self.logger = create_logger() # stdout logger
 
         self.llm_integrator = LLMIntegrator(llm_model=llm_model,
                                             embeddings_model=embeddings_model,
@@ -68,14 +66,8 @@ class AutoCimKGCore:
             "written_by_name": "written_by"
         }
 
-        # stdout logger
-        self.logger.setLevel(logging.DEBUG)
-        self.formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                                      datefmt="%Y-%m-%d %H:%M:%S")
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(self.formatter)
-        console_handler.setLevel(logging.DEBUG)
-        self.logger.addHandler(console_handler)
+        # format of the buffered logger (see __init_logger())
+        self.formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 
     def __init_logger(self):
         """

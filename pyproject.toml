@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autocimkg"
+version = "1.1.0"
+description = "Automatic construction and incremental maintenance of knowledge graphs about experts and competencies"
+readme = "README.md"
+license = "LGPL-2.1-only"
+license-files = ["LICENSE.txt"]
+authors = [{ name = "Gerhard Lerch" }]
+maintainers = [{ name = "Franz Mohr" }]
+requires-python = ">=3.9"
+# Lower bounds are kept low on purpose: platforms such as Databricks preinstall older numpy, scikit-learn, pydantic
+# and psycopg2 versions, which pip then keeps instead of replacing (or building psycopg2 from source).
+# LangChain 0.3 and 1.x both work, so pip matches whichever series is already installed.
+dependencies = [
+    "langchain-core>=0.3.19,<2",
+    "langchain-openai>=0.2.0,<2",
+    "numpy>=1.23,<3",
+    "scikit-learn>=1.1,<2",
+    "pydantic>=2.7.4,<3",
+    "psycopg2>=2.9,<3",
+    "apache-age-python==0.0.7",
+    "antlr4-python3-runtime==4.11.1",  # Apache AGE's Cypher result parser was generated w/ this exact version
+]
+
+[project.optional-dependencies]
+# LangChain integrations of further LLM providers (see create_chat_model / create_embeddings_model)
+ollama = ["langchain-ollama>=0.2.0,<2"]
+anthropic = ["langchain-anthropic>=0.3.0,<2"]
+google = ["langchain-google-genai>=2.0.7,<5"]
+mistralai = ["langchain-mistralai>=0.2.2,<2"]
+huggingface = ["langchain-huggingface>=0.1.2,<2"]  # local sentence-transformers embeddings, pulls in PyTorch
+# packages the tutorial notebook uses (PDF loading, employee master data)
+tutorial = ["pypdf>=4.3.1,<7", "pandas>=1.5,<3", "openpyxl>=3.1,<4"]
+dev = ["pytest>=8.2.2", "hypothesis>=6.122.1"]
+
+[project.urls]
+Repository = "https://github.com/franzmohr/autocimkg"
+Original = "https://github.com/gary4512/autocimkg"
+
+[tool.setuptools.packages.find]
+include = ["autocimkg*"]

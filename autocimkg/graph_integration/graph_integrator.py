@@ -3,12 +3,13 @@ from datetime import datetime
 import age
 import numpy as np
 from ..models import KnowledgeGraph, Relationship, Entity
-from ..utils.logger import create_logger
+from .base import BaseGraphIntegrator
 from typing import Union
 
-class GraphIntegrator:
+class GraphIntegrator(BaseGraphIntegrator):
     """
     Designed to integrate and manage graph data in a PostgreSQL (and Apache AGE) database.
+    Implements the storage backend interface BaseGraphIntegrator.
     """
 
     def __init__(self, host: str, port: int, dbname: str, username: str, password: str):
@@ -22,14 +23,13 @@ class GraphIntegrator:
         :param password: Password for database access
         """
 
+        super().__init__()
+
         self.host = host
         self.port = port
         self.dbname = dbname
         self.username = username
         self.password = password
-
-        # stdout logger
-        self.logger = create_logger()
 
     def create_graph(self, graph_name: str):
         """

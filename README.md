@@ -38,6 +38,7 @@ Changes compared to the original version (2026-09):
 - A read-only MCP server that makes stored KGs available to AI agents (new folder 'mcp_server/').
 - Support for newer Python versions (v3.10 to v3.13) by replacing exact package versions with version ranges; modified files: 'requirements.txt', 'requirements-optional.txt'.
 - Installable package that also runs on Databricks clusters, w/ LangChain v0.3 or v1 (see [Databricks](#databricks)); the logging module is no longer reloaded and the tutorial reads PDFs w/ pypdf directly; modified files: 'README.md', 'requirements.txt', 'autocimkg/autocimkg_core.py', 'autocimkg/utils/llm_integrator.py', 'autocimkg/graph_integration/graph_integrator.py', 'autocimkg/metadata_integration/metadata_integrator.py', 'autocimkg/models/knowledge_graph.py', 'tutorial/tutorial.ipynb'; new files: 'pyproject.toml', 'autocimkg/utils/logger.py'; removed files: 'requirements-optional.txt' (replaced by extras).
+- Interchangeable storage backends: interfaces for graph and metadata storage, implemented by the existing PostgreSQL/Apache AGE connectors, whose drivers are imported on first use (see [Storage Backends](#storage-backends)); modified files: 'README.md', 'autocimkg/\_\_init\_\_.py', 'autocimkg/graph_integration/\_\_init\_\_.py', 'autocimkg/graph_integration/graph_integrator.py', 'autocimkg/metadata_integration/\_\_init\_\_.py', 'autocimkg/metadata_integration/metadata_integrator.py'; new files: 'autocimkg/graph_integration/base.py', 'autocimkg/metadata_integration/base.py', 'tests/test_storage.py'.
 ## License Notice
 This software is based on and includes modified components of the [iText2KG library (v0.0.7)](https://github.com/AuvaLab/itext2kg), which is licensed under the GNU Lesser General Public Library (v2.1).
 The extensive changes and enhancements made are reflected in all files of the reused codebase and correspond to the overview given above. 
@@ -123,5 +124,18 @@ Note that an existing KG can only be maintained with the embeddings model it was
 Moreover, smaller local models tend to produce invalid JSON more often, which AutoCimKG answers with retries (see ```max_tries``` parameters).
 ## Usage
 An exemplary utilisation of AutoCimKG is provided in the ```tutorial```.
+## Storage Backends
+The KG construction itself works on ```KnowledgeGraph``` objects and doesn't depend on a database. 
+Storing graphs and metadata is the task of two interchangeable connectors, defined as interfaces: ```BaseGraphIntegrator``` (graphs) and ```BaseMetadataIntegrator``` (metadata repository). 
+```GraphIntegrator``` and ```MetadataIntegrator``` implement them for PostgreSQL/Apache AGE. Their database drivers are only imported when these classes are used.
+<br/>
+<br/>
+A further backend (e.g. Delta tables on Databricks) subclasses both interfaces; their docstrings describe what a backend has to preserve. 
+The contract tests in 'tests/test_storage.py' check this for every backend listed there. 
+They run against PostgreSQL/Apache AGE if ```AUTOCIMKG_TEST_DB_HOST``` (plus ```_PORT```, ```_NAME```, ```_USER``` and ```_PASSWORD```) is set, e.g.:
+```bash
+AUTOCIMKG_TEST_DB_HOST=localhost AUTOCIMKG_TEST_DB_NAME=<database> AUTOCIMKG_TEST_DB_USER=<user> AUTOCIMKG_TEST_DB_PASSWORD=<password> pytest tests
+```
+The MCP server (see below) reads PostgreSQL/Apache AGE directly and would need a backend of its own.
 ## Use in AI Agents (e.g. Microsoft Copilot Studio)
 The folder ```mcp_server``` contains a standalone MCP server that exposes stored competency KGs as read-only tools (e.g. finding experts for a topic), which agents in Microsoft Copilot Studio and Microsoft 365 Copilot can call (authenticated via Entra ID or an API key). See its README for setup.

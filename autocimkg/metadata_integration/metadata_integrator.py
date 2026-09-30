@@ -2,11 +2,12 @@ import psycopg2
 import json
 
 from ..models import Document, Ontology, KnowledgeGraphVersion, Log
-from ..utils.logger import create_logger
+from .base import BaseMetadataIntegrator
 
-class MetadataIntegrator:
+class MetadataIntegrator(BaseMetadataIntegrator):
     """
     Designed to integrate and manage metadata in a PostgreSQL database.
+    Implements the storage backend interface BaseMetadataIntegrator.
     """
 
     def __init__(self, host: str, port: int, dbname: str, username: str, password: str):
@@ -21,15 +22,14 @@ class MetadataIntegrator:
         :param password: Password for database access
         """
 
+        super().__init__()
+
         self.host = host
         self.port = port
         self.dbname = dbname
         self.schema = "public"
         self.username = username
         self.password = password
-
-        # stdout logger
-        self.logger = create_logger()
 
     def init_db(self):
         """
@@ -179,7 +179,7 @@ class MetadataIntegrator:
             if cursor: cursor.close()
             if connection: connection.close()
 
-    def read_logs(self, kg_name: str):
+    def read_logs(self, kg_name: str) -> list[Log]:
         """
         Reads construction log data from the database.
 
@@ -459,7 +459,7 @@ class MetadataIntegrator:
             if cursor: cursor.close()
             if connection: connection.close()
 
-    def create_llm_config(self, kg_name: str, llm_config: str):
+    def create_llm_config(self, kg_name: str, llm_config: dict):
         """
         Creates an LLM config in the database.
 

@@ -2,6 +2,7 @@ import json
 import numpy as np
 import logging
 import io
+import re
 
 from datetime import datetime
 from typing import Tuple, Any
@@ -11,6 +12,9 @@ from .irelations_extraction import iRelationsExtractor
 from .utils import Matcher, LLMIntegrator, get_model_config
 from .utils.logger import create_logger, LOG_FORMAT, LOG_DATE_FORMAT
 from .models import KnowledgeGraph, Entity, EntityProperties, Relationship, RelationshipProperties, Document, Employee, Ontology, AlignedEntity, Log
+
+# first line of a buffered log entry (see LOG_FORMAT)
+LOG_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (\w+) autocimkg: (.*)$")
 
 
 class AutoCimKGCore:
@@ -94,17 +98,19 @@ class AutoCimKGCore:
         """
 
         log = logging_buffer.getvalue()
-        logs_raw = list(filter(None, log.split('\n')))
 
-        # fmt = yyyy-mm-dd H:M:S+TZ LVL autocimkg: message
+        # fmt = yyyy-mm-dd H:M:S LVL autocimkg: message
+        # lines w/o this prefix continue the previous message (e.g. tracebacks or texts w/ line breaks)
         logs = []
-        for log_raw in logs_raw:
-            meta = log_raw.split(" autocimkg: ")[0]
-            ts_str = meta.split(" ")[0] + " " + meta.split(" ")[1]
-            ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
-            log_lvl = meta.split(" ")[2]
-            message = log_raw.split(" autocimkg: ")[1]
-            logs.append(Log(ts=ts, logger_name="autocimkg", log_level=log_lvl, message=message))
+        for line in log.split('\n'):
+            match = LOG_LINE.match(line)
+            if match:
+                ts = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S")
+                logs.append(Log(ts=ts, logger_name="autocimkg", log_level=match.group(2), message=match.group(3)))
+            elif logs:
+                logs[-1].message += '\n' + line
+        for entry in logs:
+            entry.message = entry.message.rstrip('\n')
 
         return logs
 

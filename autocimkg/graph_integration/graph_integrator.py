@@ -1,8 +1,9 @@
 from datetime import datetime
 
 import age
+import json
 import numpy as np
-from ..models import KnowledgeGraph, Relationship, Entity
+from ..models import KnowledgeGraph, Relationship, Entity, EntityProperties, RelationshipProperties
 from .base import BaseGraphIntegrator
 from typing import Union
 
@@ -83,53 +84,27 @@ class GraphIntegrator(BaseGraphIntegrator):
             cursor = connection.connection.cursor()
 
             # basic assumption: reading all (!) nodes and all (!) relations leads to consistent result!
+            # results are read as agtype text, i.e. JSON: the agtype parser of apache-age-python doesn't unescape
+            # strings (e.g. backslashes or double quotes) correctly
 
             # NODES
-            cursor.execute("SELECT * from cypher(%s, $$ MATCH (n) RETURN n $$) as (v agtype);", (graph_name,))
-            # execCypher() and cypher() do not work due to invalid escaping of special characters (e.g. umlauts) ...
+            cursor.execute("SELECT v::text from cypher(%s, $$ MATCH (n) RETURN [label(n), properties(n)] $$) "
+                           "as (v agtype);", (graph_name,))
             entities = []
             for row in cursor:
-                v = row[0]
-
-                entity = Entity(label=v.label, name=v["name"])
-                entity.properties.embeddings = GraphIntegrator.transform_str_list_to_embeddings(v["embeddings"])
-                entity.properties.generated_at_time = GraphIntegrator.transform_str_to_datetime(v["generated_at_time"])
-                entity.properties.invalidated_at_time = GraphIntegrator.transform_str_to_datetime(v["invalidated_at_time"])
-                entity.properties.agents = v["agents"]
-                entity.properties.origins = v["origins"]
-                # test
-                entities.append(entity)
+                label, properties = json.loads(row[0])
+                entities.append(GraphIntegrator.transform_to_entity(label, properties))
 
             # EDGES
-            cursor.execute("SELECT * from cypher(%s, $$ MATCH p=()-[]->() RETURN p $$) as (p agtype);", (graph_name,))
-            # execCypher() and cypher() do not work due to invalid escaping of special characters (e.g. umlauts) ...
+            cursor.execute("SELECT v::text from cypher(%s, $$ MATCH (n)-[r]->(m) RETURN [label(n), properties(n), "
+                           "label(r), properties(r), label(m), properties(m)] $$) as (v agtype);", (graph_name,))
             relationships = []
             for row in cursor:
-                path = row[0]
-
-                v1 = path[0]
-                entity1 = Entity(label=v1.label, name=v1["name"])
-                entity1.properties.embeddings = GraphIntegrator.transform_str_list_to_embeddings(v1["embeddings"])
-                entity1.properties.generated_at_time = GraphIntegrator.transform_str_to_datetime(v1["generated_at_time"])
-                entity1.properties.invalidated_at_time = GraphIntegrator.transform_str_to_datetime(v1["invalidated_at_time"])
-                entity1.properties.agents = v1["agents"]
-                entity1.properties.origins = v1["origins"]
-                v2 = path[2]
-                entity2 = Entity(label=v2.label, name=v2["name"])
-                entity2.properties.embeddings = GraphIntegrator.transform_str_list_to_embeddings(v2["embeddings"])
-                entity2.properties.generated_at_time = GraphIntegrator.transform_str_to_datetime(v2["generated_at_time"])
-                entity2.properties.invalidated_at_time = GraphIntegrator.transform_str_to_datetime(v2["invalidated_at_time"])
-                entity2.properties.agents = v2["agents"]
-                entity2.properties.origins = v2["origins"]
-
-                e = path[1]
-                relationship = Relationship(startEntity=entity1,
-                                            endEntity=entity2, name=e.label)
-                relationship.properties.embeddings = GraphIntegrator.transform_str_list_to_embeddings(e["embeddings"])
-                relationship.properties.generated_at_time = GraphIntegrator.transform_str_to_datetime(e["generated_at_time"])
-                relationship.properties.invalidated_at_time = GraphIntegrator.transform_str_to_datetime(e["invalidated_at_time"])
-                relationship.properties.agents = e["agents"]
-                relationship.properties.origins = e["origins"]
+                start_label, start_properties, name, properties, end_label, end_properties = json.loads(row[0])
+                relationship = Relationship(startEntity=GraphIntegrator.transform_to_entity(start_label, start_properties),
+                                            endEntity=GraphIntegrator.transform_to_entity(end_label, end_properties),
+                                            name=name)
+                GraphIntegrator.transform_to_properties(properties, relationship.properties)
                 relationships.append(relationship)
 
             # = KG
@@ -199,10 +174,10 @@ class GraphIntegrator(BaseGraphIntegrator):
                 elif prop == "invalidated_at_time":
                     value = GraphIntegrator.transform_datetime_to_str(value)
 
-                if isinstance(value, list): properties.append(f'SET n.{prop.replace(" ", "_")} = {value}')
-                else: properties.append(f'SET n.{prop.replace(" ", "_")} = "{value}"')
+                properties.append(f'SET n.{prop.replace(" ", "_")} = {GraphIntegrator.transform_to_cypher_literal(value)}')
 
-            query = f'CREATE (n:{node.label} {{name: "{node.name}"}}) ' + ' '.join(properties)
+            query = (f'CREATE (n:{node.label} {{name: {GraphIntegrator.transform_to_cypher_literal(node.name)}}}) '
+                     + ' '.join(properties))
             queries.append(query)
         return queries
 
@@ -226,12 +201,11 @@ class GraphIntegrator(BaseGraphIntegrator):
                 elif key == "invalidated_at_time":
                     value = GraphIntegrator.transform_datetime_to_str(value)
 
-                if isinstance(value, list): properties.append(f'SET r.{key.replace(" ", "_")} = {value}')
-                else: properties.append(f'SET r.{key.replace(" ", "_")} = "{value}"')
+                properties.append(f'SET r.{key.replace(" ", "_")} = {GraphIntegrator.transform_to_cypher_literal(value)}')
 
             query = (
-                f'MATCH (n:{rel.startEntity.label} {{name: "{rel.startEntity.name}"}}), '
-                f'(m:{rel.endEntity.label} {{name: "{rel.endEntity.name}"}}) '
+                f'MATCH (n:{rel.startEntity.label} {{name: {GraphIntegrator.transform_to_cypher_literal(rel.startEntity.name)}}}), '
+                f'(m:{rel.endEntity.label} {{name: {GraphIntegrator.transform_to_cypher_literal(rel.endEntity.name)}}}) '
                 f'CREATE (n)-[r:{rel.name}]->(m) ' + ' '.join(properties)
             )
             rels.append(query)
@@ -289,3 +263,46 @@ class GraphIntegrator(BaseGraphIntegrator):
         if embeddings is None or embeddings == "":  # written as "" w/o embeddings (see transform_embeddings_to_str_list)
             return None
         return np.array(embeddings.split(",")).astype(np.float64)
+
+    @staticmethod
+    def transform_to_cypher_literal(value: Union[str, list]) -> str:
+        """
+        Transforms a string (or list of strings) into a Cypher literal, escaping special characters (e.g. quotes,
+        backslashes and line breaks). '$' is escaped as well, as '$$' would end the query passed to cypher().
+
+        :param value: String or list of strings
+        :returns: Cypher literal (e.g. "o'brien" or ["doc 1.pdf", "doc 2.pdf"])
+        """
+
+        if isinstance(value, list):
+            return "[" + ", ".join(GraphIntegrator.transform_to_cypher_literal(item) for item in value) + "]"
+        return json.dumps(str(value), ensure_ascii=False).replace("$", "\\u0024")
+
+    @staticmethod
+    def transform_to_entity(label: str, properties: dict) -> Entity:
+        """
+        Transforms the label and properties of a node read from the database into an entity.
+
+        :param label: Node label
+        :param properties: Node properties
+        :returns: Entity
+        """
+
+        entity = Entity(label=label, name=properties.get("name", ""))
+        GraphIntegrator.transform_to_properties(properties, entity.properties)
+        return entity
+
+    @staticmethod
+    def transform_to_properties(properties: dict, target: Union[EntityProperties, RelationshipProperties]) -> None:
+        """
+        Transforms the properties of a node or edge read from the database into entity or relationship properties.
+
+        :param properties: Node or edge properties
+        :param target: Entity or relationship properties to fill
+        """
+
+        target.embeddings = GraphIntegrator.transform_str_list_to_embeddings(properties.get("embeddings"))
+        target.generated_at_time = GraphIntegrator.transform_str_to_datetime(properties.get("generated_at_time"))
+        target.invalidated_at_time = GraphIntegrator.transform_str_to_datetime(properties.get("invalidated_at_time"))
+        target.agents = properties.get("agents", [])
+        target.origins = properties.get("origins", [])

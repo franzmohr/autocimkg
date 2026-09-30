@@ -89,9 +89,13 @@ def entity(label: str, name: str, seed: int) -> Entity:
     return Entity(label=label, name=name, properties=properties)
 
 
+SKILL = "stress testing $$ c:\\data 'q' \"über\"\nnext"  # special characters must survive writing and reading
+
+
 def sample_graph() -> KnowledgeGraph:
-    expert, skill = entity("Expert", "jane doe", 1), entity("Competence", "stress testing", 2)
+    expert, skill = entity("Expert", "jane doe", 1), entity("Competence", SKILL, 2)
     skill.properties.invalidated_at_time = TS
+    skill.properties.origins = ["O'Brien's \"paper\" $1.pdf", "doc.pdf"]
     company = Entity(label="Company", name="acme")  # w/o embeddings and timestamps
     knows = Relationship(startEntity=expert, endEntity=skill, name="knows",
                          properties=RelationshipProperties(embeddings=np.random.default_rng(3).random(8),
@@ -124,7 +128,7 @@ def test_graph_backend_contract(make_backend):
 
         [relationship] = actual.relationships
         assert (relationship.startEntity.name, relationship.name, relationship.endEntity.name) == \
-               ("jane doe", "knows", "stress testing")
+               ("jane doe", "knows", SKILL)
         assert_same_properties(relationship.properties, expected.relationships[0].properties)
     finally:
         backend.delete_graph(graph)

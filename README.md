@@ -36,6 +36,7 @@ Credit for the design and implementation of AutoCimKG goes to its original autho
 Changes compared to the original version (2026-09):
 - Support for further LLM providers besides OpenAI, including local models (see [LLM Providers](#llm-providers)); modified files: 'autocimkg/\_\_init\_\_.py', 'autocimkg/autocimkg_core.py', 'autocimkg/utils/\_\_init\_\_.py', 'autocimkg/utils/llm_integrator.py', 'tutorial/tutorial.ipynb'; new files: 'autocimkg/utils/llm_factory.py', 'requirements-optional.txt'.
 - A read-only MCP server that makes stored KGs available to AI agents (new folder 'mcp_server/').
+- Support for newer Python versions (v3.10 to v3.13) by replacing exact package versions with version ranges; modified files: 'requirements.txt', 'requirements-optional.txt'.
 ## License Notice
 This software is based on and includes modified components of the [iText2KG library (v0.0.7)](https://github.com/AuvaLab/itext2kg), which is licensed under the GNU Lesser General Public Library (v2.1).
 The extensive changes and enhancements made are reflected in all files of the reused codebase and correspond to the overview given above. 
@@ -52,7 +53,9 @@ Another recommendation is to set up the terminal-based [psql](https://www.postgr
 and [pgAdmin](https://www.pgadmin.org/) to inspect assembled property graphs as well as associated metadata and to query the competency KG (using SQL and Cypher).
 <br/>
 <br/>
-In general, AutoCimKG was developed and is tested with Python v3.9 and lists all required packages in the 'requirements.txt' file.
+In general, AutoCimKG was developed with Python v3.9 and runs on Python v3.9 to v3.13 (tested with v3.12 and v3.13). 
+All required packages are listed in the 'requirements.txt' file as version ranges, so pip picks versions that suit the Python version in use. 
+The exact versions used in the master's thesis are those of the [original repository](https://github.com/gary4512/autocimkg/blob/main/requirements.txt).
 ## LLM Providers
 AutoCimKG accepts any [LangChain](https://www.langchain.com/) chat and embeddings model. 
 For common providers, ```create_chat_model()``` and ```create_embeddings_model()``` construct suitable models (incl. JSON output mode where supported):

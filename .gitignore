@@ -4,6 +4,7 @@ venv313/
 
 # data
 playground/
+tutorial/data/*.pdf
 
 # python
 __pycache__/

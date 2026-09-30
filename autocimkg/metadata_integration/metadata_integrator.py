@@ -251,8 +251,7 @@ class MetadataIntegrator(BaseMetadataIntegrator):
             cursor = connection.cursor()
 
             for doc in documents:
-                authors = ""
-                if doc.authors is not None and len(doc.authors) != 0: authors = ",".join(doc.authors)
+                authors = MetadataIntegrator.transform_authors_to_str(doc.authors)
                 content = MetadataIntegrator.transform_content_to_str(doc.content)
                 cursor.execute(
                     f"INSERT INTO {self.schema}.data_source(file_name, author, full_text, file_lang, file_type) VALUES (%s, %s, %s , %s, %s)",
@@ -285,8 +284,7 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             documents = []
             for row in rows:
-                authors = []
-                if row[1] is not None and row[1] != "": authors = row[1].split(",")
+                authors = MetadataIntegrator.transform_str_to_authors(row[1])
                 documents.append(
                     Document(name=row[0], authors=authors, content=MetadataIntegrator.transform_str_to_content(row[2]),
                              language=row[3], doc_type=row[4]))
@@ -321,8 +319,7 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             documents = []
             for row in rows:
-                authors = []
-                if row[1] is not None and row[1] != "": authors = row[1].split(",")
+                authors = MetadataIntegrator.transform_str_to_authors(row[1])
                 documents.append(
                     Document(name=row[0], authors=authors, content=MetadataIntegrator.transform_str_to_content(row[2]),
                              language=row[3], doc_type=row[4]))
@@ -621,6 +618,39 @@ class MetadataIntegrator(BaseMetadataIntegrator):
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
+
+    @staticmethod
+    def transform_authors_to_str(authors: list[str]) -> str:
+        """
+        Transforms a document's authors into their text representation in the database: a JSON array
+        (e.g. ["Martin Summer", "Doe, Jane"]), or "" w/o authors.
+
+        :param authors: List of author names
+        :returns: Text representation of the authors
+        """
+
+        if not authors: return ""
+        return json.dumps(list(authors), ensure_ascii=False)
+
+    @staticmethod
+    def transform_str_to_authors(authors_str: str) -> list[str]:
+        """
+        Transforms the text representation of a document's authors in the database back into a list (see
+        transform_authors_to_str). Authors written by earlier versions as comma-separated names are read as well.
+
+        :param authors_str: Text representation of the authors
+        :returns: List of author names
+        """
+
+        if not authors_str: return []
+        if authors_str.startswith("[") and authors_str.endswith("]"):
+            try:
+                authors = json.loads(authors_str)
+                if isinstance(authors, list) and all(isinstance(author, str) for author in authors):
+                    return authors
+            except ValueError:
+                pass
+        return authors_str.split(",")  # earlier versions
 
     @staticmethod
     def transform_content_to_str(content: Union[str, list[str]]) -> str:

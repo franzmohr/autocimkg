@@ -149,7 +149,7 @@ def test_metadata_backend_contract(make_backend):
                                                         end_proc_ts=TS))
         backend.create_logs(kg, [Log(ts=TS, logger_name="autocimkg", log_level="INFO", message="Entity created")])
         backend.create_data_sources([Document(name=source, doc_type="scientific article", content="Abstract ...",
-                                              authors=["Jane Doe", "John Doe"], language="eng"),
+                                              authors=["Doe, Jane", "John Doe"], language="eng"),
                                      Document(name=blocks_source, doc_type="scientific article", content=blocks,
                                               authors=[], language="eng")])
         backend.create_ontology(kg, Ontology(topics=[{"Finance": "Financial topics"}],
@@ -163,7 +163,7 @@ def test_metadata_backend_contract(make_backend):
         assert (log.ts, log.logger_name, log.log_level, log.message) == (TS, "autocimkg", "INFO", "Entity created")
         [doc] = backend.read_data_sources_by_name(source)
         assert (doc.doc_type, doc.content, list(doc.authors), doc.language) == \
-               ("scientific article", "Abstract ...", ["Jane Doe", "John Doe"], "eng")
+               ("scientific article", "Abstract ...", ["Doe, Jane", "John Doe"], "eng")
         [blocks_doc] = backend.read_data_sources_by_name(blocks_source)
         assert (blocks_doc.content, list(blocks_doc.authors)) == (blocks, [])
         assert {source, blocks_source} <= {d.name for d in backend.read_data_sources()}
@@ -185,6 +185,20 @@ def test_metadata_backend_contract(make_backend):
     assert not backend.read_logs(kg) and not backend.read_ontologies(kg)
     assert not backend.read_llm_configs(kg) and not backend.read_autocimkg_configs(kg)
     assert not backend.read_data_sources_by_name(source) and not backend.read_data_sources_by_name(blocks_source)
+
+
+@pytest.mark.parametrize("stored, authors", [
+    ('["Doe, Jane", "Martin Summer"]', ["Doe, Jane", "Martin Summer"]),  # JSON array
+    ("Jane Doe,Martin Summer", ["Jane Doe", "Martin Summer"]),  # as written by earlier versions
+    ("Martin Summer", ["Martin Summer"]),
+    ("", []),
+    (None, []),
+])
+def test_postgres_document_authors_format(stored, authors):
+    from autocimkg.metadata_integration.metadata_integrator import MetadataIntegrator
+
+    assert MetadataIntegrator.transform_str_to_authors(stored) == authors
+    assert MetadataIntegrator.transform_str_to_authors(MetadataIntegrator.transform_authors_to_str(authors)) == authors
 
 
 @pytest.mark.parametrize("stored, content", [

@@ -11,7 +11,8 @@ class BaseGraphIntegrator(ABC):
     implement this interface and can be used interchangeably.
 
     Contract: writing a graph and reading it back yields the same entities and relationships, incl. their labels,
-    names and properties (embeddings, generated and invalidated timestamps, agents and origins). Relationships refer
+    names and properties (embeddings, generated and invalidated timestamps, agents and origins; embeddings and
+    timestamps may be None). Relationships refer
     to their start and end entity by label and name.
     Errors are logged via self.logger and don't interrupt the program flow; reading then returns None.
     """

@@ -11,8 +11,8 @@ class BaseMetadataIntegrator(ABC):
     implement this interface and can be used interchangeably.
 
     Contract: metadata is stored per KG version (kg_name), except data sources (documents), which are shared
-    across versions. Whatever is created can be read back (incl. timestamps, lists and nested dicts) and deleted
-    again; only a document's content may come back as one text instead of a list of text blocks.
+    across versions. Whatever is created can be read back unchanged (incl. timestamps, a document's content as text
+    or list of text blocks, and nested dicts) and deleted again.
     Errors are logged via self.logger and don't interrupt the program flow; reading then returns None.
     """
 

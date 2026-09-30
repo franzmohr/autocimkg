@@ -283,9 +283,9 @@ class GraphIntegrator(BaseGraphIntegrator):
         Transforms a comma-separated string of embeddings back into a NumPy array.
 
         :param embeddings: Comma-separated string of embeddings
-        :returns: NumPy array of embeddings
+        :returns: NumPy array of embeddings (or None, if the entity or relationship has none)
         """
 
-        if embeddings is None:
-            return ""
+        if embeddings is None or embeddings == "":  # written as "" w/o embeddings (see transform_embeddings_to_str_list)
+            return None
         return np.array(embeddings.split(",")).astype(np.float64)

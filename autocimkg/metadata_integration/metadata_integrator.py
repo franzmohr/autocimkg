@@ -1,5 +1,7 @@
 import psycopg2
 import json
+from ast import literal_eval
+from typing import Union
 
 from ..models import Document, Ontology, KnowledgeGraphVersion, Log
 from .base import BaseMetadataIntegrator
@@ -251,8 +253,7 @@ class MetadataIntegrator(BaseMetadataIntegrator):
             for doc in documents:
                 authors = ""
                 if doc.authors is not None and len(doc.authors) != 0: authors = ",".join(doc.authors)
-                content = doc.content
-                if isinstance(content, list): content = f"'{content}'"
+                content = MetadataIntegrator.transform_content_to_str(doc.content)
                 cursor.execute(
                     f"INSERT INTO {self.schema}.data_source(file_name, author, full_text, file_lang, file_type) VALUES (%s, %s, %s , %s, %s)",
                     (doc.name, authors, content, doc.language, doc.doc_type))
@@ -287,7 +288,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
                 authors = []
                 if row[1] is not None and row[1] != "": authors = row[1].split(",")
                 documents.append(
-                    Document(name=row[0], authors=authors, content=row[2], language=row[3], doc_type=row[4]))
+                    Document(name=row[0], authors=authors, content=MetadataIntegrator.transform_str_to_content(row[2]),
+                             language=row[3], doc_type=row[4]))
 
             return documents
         except Exception as e:
@@ -322,7 +324,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
                 authors = []
                 if row[1] is not None and row[1] != "": authors = row[1].split(",")
                 documents.append(
-                    Document(name=row[0], authors=authors, content=row[2], language=row[3], doc_type=row[4]))
+                    Document(name=row[0], authors=authors, content=MetadataIntegrator.transform_str_to_content(row[2]),
+                             language=row[3], doc_type=row[4]))
 
             return documents
         except Exception as e:
@@ -618,3 +621,42 @@ class MetadataIntegrator(BaseMetadataIntegrator):
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
+
+    @staticmethod
+    def transform_content_to_str(content: Union[str, list[str]]) -> str:
+        """
+        Transforms a document's content into its text representation in the database.
+        Text is stored as is, a list of text blocks as JSON array (e.g. ["block 1", "block 2"]).
+
+        :param content: Text or list of text blocks
+        :returns: Text representation of the content
+        """
+
+        if isinstance(content, list): return json.dumps(content, ensure_ascii=False)
+        return content
+
+    @staticmethod
+    def transform_str_to_content(content_str: str) -> Union[str, list[str]]:
+        """
+        Transforms the text representation of a document's content in the database back into text or a list of
+        text blocks (see transform_content_to_str). Lists written by earlier versions as quoted Python lists
+        (e.g. '['block 1', 'block 2']') are read as well.
+
+        :param content_str: Text representation of the content
+        :returns: Text or list of text blocks
+        """
+
+        if not content_str: return content_str
+        candidates = []
+        if content_str.startswith("[") and content_str.endswith("]"):
+            candidates.append(lambda: json.loads(content_str))
+        if content_str.startswith("'[") and content_str.endswith("]'"):  # earlier versions
+            candidates.append(lambda: literal_eval(content_str[1:-1]))
+        for parse in candidates:
+            try:
+                content = parse()
+            except (ValueError, SyntaxError):
+                continue
+            if isinstance(content, list) and all(isinstance(block, str) for block in content):
+                return content
+        return content_str

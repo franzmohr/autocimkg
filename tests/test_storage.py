@@ -92,15 +92,19 @@ def entity(label: str, name: str, seed: int) -> Entity:
 def sample_graph() -> KnowledgeGraph:
     expert, skill = entity("Expert", "jane doe", 1), entity("Competence", "stress testing", 2)
     skill.properties.invalidated_at_time = TS
+    company = Entity(label="Company", name="acme")  # w/o embeddings and timestamps
     knows = Relationship(startEntity=expert, endEntity=skill, name="knows",
                          properties=RelationshipProperties(embeddings=np.random.default_rng(3).random(8),
                                                            generated_at_time=TS, agents=["AutoCimKG"],
                                                            origins=["doc.pdf"]))
-    return KnowledgeGraph(entities=[expert, skill], relationships=[knows])
+    return KnowledgeGraph(entities=[expert, skill, company], relationships=[knows])
 
 
 def assert_same_properties(actual, expected):
-    np.testing.assert_allclose(actual.embeddings, expected.embeddings)
+    if expected.embeddings is None:
+        assert actual.embeddings is None
+    else:
+        np.testing.assert_allclose(actual.embeddings, expected.embeddings)
     assert (actual.generated_at_time, actual.invalidated_at_time) == (expected.generated_at_time,
                                                                       expected.invalidated_at_time)
     assert (list(actual.agents), list(actual.origins)) == (expected.agents, expected.origins)
@@ -131,6 +135,7 @@ def test_graph_backend_contract(make_backend):
 @pytest.mark.parametrize("make_backend", METADATA_BACKENDS)
 def test_metadata_backend_contract(make_backend):
     backend, kg, source = make_backend(), f"test_{uuid.uuid4().hex[:12]}", f"test_{uuid.uuid4().hex[:12]}.pdf"
+    blocks_source, blocks = f"test_{uuid.uuid4().hex[:12]}.pdf", ["title - Stress 'tests'", "abstract - Über [1]"]
     backend.init_db()
     backend.init_db()  # idempotent
     llm_config = {"model": "qwen3.5:9b", "temperature": 0, "class": "langchain_ollama.ChatOllama"}
@@ -140,7 +145,9 @@ def test_metadata_backend_contract(make_backend):
                                                         end_proc_ts=TS))
         backend.create_logs(kg, [Log(ts=TS, logger_name="autocimkg", log_level="INFO", message="Entity created")])
         backend.create_data_sources([Document(name=source, doc_type="scientific article", content="Abstract ...",
-                                              authors=["Jane Doe", "John Doe"], language="eng")])
+                                              authors=["Jane Doe", "John Doe"], language="eng"),
+                                     Document(name=blocks_source, doc_type="scientific article", content=blocks,
+                                              authors=[], language="eng")])
         backend.create_ontology(kg, Ontology(topics=[{"Finance": "Financial topics"}],
                                              relations=[{"knows": "Knowledge"}], strict=False))
         backend.create_llm_config(kg, llm_config)
@@ -153,7 +160,9 @@ def test_metadata_backend_contract(make_backend):
         [doc] = backend.read_data_sources_by_name(source)
         assert (doc.doc_type, doc.content, list(doc.authors), doc.language) == \
                ("scientific article", "Abstract ...", ["Jane Doe", "John Doe"], "eng")
-        assert source in [d.name for d in backend.read_data_sources()]
+        [blocks_doc] = backend.read_data_sources_by_name(blocks_source)
+        assert (blocks_doc.content, list(blocks_doc.authors)) == (blocks, [])
+        assert {source, blocks_source} <= {d.name for d in backend.read_data_sources()}
         [ontology] = backend.read_ontologies(kg)
         assert (ontology.topics, ontology.relations, ontology.strict) == \
                ([{"Finance": "Financial topics"}], [{"knows": "Knowledge"}], False)
@@ -166,8 +175,25 @@ def test_metadata_backend_contract(make_backend):
         backend.delete_autocimkg_configs(kg)
         backend.delete_kg_version(kg)
         backend.delete_data_sources_by_name(source)
+        backend.delete_data_sources_by_name(blocks_source)
 
     assert kg not in [v.kg_name for v in backend.read_kg_versions()]
     assert not backend.read_logs(kg) and not backend.read_ontologies(kg)
     assert not backend.read_llm_configs(kg) and not backend.read_autocimkg_configs(kg)
-    assert not backend.read_data_sources_by_name(source)
+    assert not backend.read_data_sources_by_name(source) and not backend.read_data_sources_by_name(blocks_source)
+
+
+@pytest.mark.parametrize("stored, content", [
+    ("Plain text", "Plain text"),
+    ('["block 1", "Über \\"2\\""]', ["block 1", 'Über "2"']),  # lists as JSON array
+    ("'['block 1', \"block's 2\"]'", ["block 1", "block's 2"]),  # lists as written by earlier versions
+    ("[1] Plain text w/ brackets [2]", "[1] Plain text w/ brackets [2]"),
+    ("[1, 2]", "[1, 2]"),  # JSON, but not a list of text blocks
+    ("", ""),
+])
+def test_postgres_document_content_format(stored, content):
+    from autocimkg.metadata_integration.metadata_integrator import MetadataIntegrator
+
+    assert MetadataIntegrator.transform_str_to_content(stored) == content
+    if isinstance(content, list):
+        assert MetadataIntegrator.transform_str_to_content(MetadataIntegrator.transform_content_to_str(content)) == content

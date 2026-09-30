@@ -28,10 +28,14 @@ The artefact AutoCimKG was developed in the course of a master's thesis. Further
 - **Author:** Gerhard Lerch
 - **Year:** 2025
 - **University:** Johannes Kepler Universit&auml;t Linz
-## Maintenance Status
-This repository is no longer actively maintained and is preserved in its current state.
+## About this Fork
+This repository continues the development of AutoCimKG. The [original repository](https://github.com/gary4512/autocimkg) by Gerhard Lerch is preserved as the final state of the master's thesis above and is no longer maintained.
+Credit for the design and implementation of AutoCimKG goes to its original author. If you use AutoCimKG in your work, please cite the original software ([DOI 10.5281/zenodo.15834992](https://doi.org/10.5281/zenodo.15834992), see 'CITATION.cff') and the thesis.
 <br/>
-For newer versions see [@franzmohr's fork](https://github.com/franzmohr/autocimkg). Thanks to @franzmohr for the great additions to the project!
+<br/>
+Changes compared to the original version (2026-09):
+- Support for further LLM providers besides OpenAI, including local models (see [LLM Providers](#llm-providers)); modified files: 'autocimkg/\_\_init\_\_.py', 'autocimkg/autocimkg_core.py', 'autocimkg/utils/\_\_init\_\_.py', 'autocimkg/utils/llm_integrator.py', 'tutorial/tutorial.ipynb'; new files: 'autocimkg/utils/llm_factory.py', 'requirements-optional.txt'.
+- A read-only MCP server that makes stored KGs available to AI agents (new folder 'mcp_server/').
 ## License Notice
 This software is based on and includes modified components of the [iText2KG library (v0.0.7)](https://github.com/AuvaLab/itext2kg), which is licensed under the GNU Lesser General Public Library (v2.1).
 The extensive changes and enhancements made are reflected in all files of the reused codebase and correspond to the overview given above. 

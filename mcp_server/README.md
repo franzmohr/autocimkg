@@ -5,10 +5,10 @@ Exposes AutoCimKG competency knowledge graphs, stored in PostgreSQL/Apache AGE, 
 answer questions like *"Who in banking supervision knows about stress testing?"*. Building and maintaining the graphs stays
 with the AutoCimKG pipeline (see the tutorial); the server only reads them.
 
-The server is standalone. It needs neither the `autocimkg` package nor LangChain, and it runs in its own environment with
-current dependencies: Python 3.10 or later (tested with 3.12, which the Docker image uses) and the packages in
-`requirements.txt`. The current MCP SDK requires a newer pydantic than AutoCimKG's pinned LangChain works with, so the two
-can't share one environment.
+The server is standalone. It needs neither the `autocimkg` package nor LangChain: Python 3.10 or later (tested with 3.12,
+which the Docker image uses, and 3.13) and the packages in `requirements.txt`. For deployment, give it its own environment
+or use the Docker image. For development, it also runs in the same environment as AutoCimKG. There, install
+`requirements.txt` without `psycopg2-binary`, since AutoCimKG's `psycopg2` provides the same module.
 
 ## Tools
 

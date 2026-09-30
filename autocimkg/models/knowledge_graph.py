@@ -1,29 +1,27 @@
-from pydantic import BaseModel, SkipValidation
+from pydantic import BaseModel, ConfigDict, SkipValidation
 from typing import Callable, Union
 from datetime import datetime
 import numpy as np
 import re
 
 class EntityProperties(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     embeddings: SkipValidation[np.ndarray] = None
     generated_at_time: Union[datetime, None] = None
     invalidated_at_time: Union[datetime, None] = None
     agents: list[str] = []
     origins: list[str] = []
 
-    class Config:
-        arbitrary_types_allowed = True
-        
 class RelationshipProperties(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     embeddings: SkipValidation[np.ndarray] = None
     generated_at_time: Union[datetime, None] = None
     invalidated_at_time: Union[datetime, None] = None
     agents: list[str] = []
     origins: list[str] = []
 
-    class Config:
-        arbitrary_types_allowed = True
-    
 class Entity(BaseModel):
     label:str = ""
     name:str = ""

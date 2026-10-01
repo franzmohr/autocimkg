@@ -5,6 +5,7 @@ import json
 import numpy as np
 from ..models import KnowledgeGraph, Relationship, Entity, EntityProperties, RelationshipProperties
 from .base import BaseGraphIntegrator
+from ..utils.errors import storage_error
 from typing import Union
 
 class GraphIntegrator(BaseGraphIntegrator):
@@ -41,30 +42,29 @@ class GraphIntegrator(BaseGraphIntegrator):
         connection = None
         try:
             # implicitly creates kg (if not already present) ...
-            connection = age.connect(host=self.host, port=self.port, dbname=self.dbname, user=self.username,
-                                     password=self.password, graph=graph_name)
+            connection = self.connect(graph_name)
             connection.commit()
-        except Exception:
-            self.logger.exception("PostgreSQL communication failed")
+        except Exception as e:
             if connection: connection.rollback()
+            raise storage_error(self.logger, f"Creating graph '{graph_name}'", e)
         finally:
             if connection: connection.close()
 
     def delete_graph(self, graph_name: str):
         """
-        Deletes a named graph in the database.
+        Deletes a named graph in the database (if present).
 
         :param graph_name: Graph name in the PGSQL/AAGE database
         """
         connection = None
         try:
-            connection = age.connect(host=self.host, port=self.port, dbname=self.dbname, user=self.username,
-                                     password=self.password, graph=graph_name)
-            age.deleteGraph(connection.connection, graph_name)
+            connection = self.connect()
+            if GraphIntegrator.graph_exists(connection, graph_name):
+                age.deleteGraph(connection.connection, graph_name)
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, f"Deleting graph '{graph_name}'", e)
         finally:
             if connection: connection.close()
 
@@ -74,13 +74,15 @@ class GraphIntegrator(BaseGraphIntegrator):
 
         :param graph_name: Graph name in the PGSQL/AAGE database
         :returns: KnowledgeGraph containing the graph structure
+        :raises StorageError: Graph doesn't exist or can't be read
         """
 
         connection = None
         cursor = None
         try:
-            connection = age.connect(host=self.host, port=self.port, dbname=self.dbname, user=self.username,
-                                     password=self.password, graph=graph_name)
+            connection = self.connect()  # w/o graph name, which would create a missing graph
+            if not GraphIntegrator.graph_exists(connection, graph_name):
+                raise LookupError("graph doesn't exist")
             cursor = connection.connection.cursor()
 
             # basic assumption: reading all (!) nodes and all (!) relations leads to consistent result!
@@ -113,8 +115,8 @@ class GraphIntegrator(BaseGraphIntegrator):
             return knowledge_graph
 
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()  # even w/o change!
+            raise storage_error(self.logger, f"Reading graph '{graph_name}'", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -135,8 +137,7 @@ class GraphIntegrator(BaseGraphIntegrator):
         connection = None
         cursor = None
         try:
-            connection = age.connect(host=self.host, port=self.port, dbname=self.dbname, user=self.username,
-                                     password=self.password, graph=graph_name)
+            connection = self.connect(graph_name)  # creates the graph, if not already present
             cursor = connection.connection.cursor()
 
             for node_write_query in node_write_queries:
@@ -148,11 +149,36 @@ class GraphIntegrator(BaseGraphIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, f"Writing graph '{graph_name}'", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
+
+    def connect(self, graph_name: str = None):
+        """
+        Connects to the database and sets up Apache AGE.
+
+        :param graph_name: Graph to create, if not already present (none by default)
+        :returns: Apache AGE connection
+        """
+
+        return age.connect(host=self.host, port=self.port, dbname=self.dbname, user=self.username,
+                           password=self.password, graph=graph_name)
+
+    @staticmethod
+    def graph_exists(connection, graph_name: str) -> bool:
+        """
+        Checks whether a named graph exists in the database.
+
+        :param connection: Apache AGE connection
+        :param graph_name: Graph name in the PGSQL/AAGE database
+        :returns: True, if the graph exists
+        """
+
+        with connection.connection.cursor() as cursor:
+            cursor.execute("SELECT count(*) FROM ag_catalog.ag_graph WHERE name = %s", (graph_name,))
+            return cursor.fetchone()[0] > 0
 
     @staticmethod
     def create_node_write_queries(knowledge_graph: KnowledgeGraph) -> list[str]:

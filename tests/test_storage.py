@@ -13,6 +13,7 @@ from datetime import datetime
 import numpy as np
 import pytest
 
+from autocimkg import StorageError
 from autocimkg.graph_integration import BaseGraphIntegrator
 from autocimkg.metadata_integration import BaseMetadataIntegrator
 from autocimkg.models import (Document, Entity, EntityProperties, KnowledgeGraph, KnowledgeGraphVersion, Log,
@@ -78,6 +79,18 @@ def test_postgres_backends_implement_interfaces():
         assert public == set(base.__abstractmethods__), "interface methods must all be abstract"
 
 
+def test_postgres_backends_report_unreachable_database():
+    from autocimkg.graph_integration import GraphIntegrator
+    from autocimkg.metadata_integration import MetadataIntegrator
+
+    args = dict(host="127.0.0.1", port=1, dbname="autocimkg", username="autocimkg", password="")  # nothing listens
+    with pytest.raises(StorageError, match="Reading graph 'kg_v1' failed") as error:
+        GraphIntegrator(**args).read_graph("kg_v1")
+    assert error.value.__cause__ is not None  # the driver's original error
+    with pytest.raises(StorageError, match=r"MetadataIntegrator.read_kg_versions\(\) failed"):
+        MetadataIntegrator(**args).read_kg_versions()
+
+
 # ---------------------------------------------------------------- contract
 
 TS = datetime(2026, 9, 30, 12, 34, 56, 789012)
@@ -132,8 +145,11 @@ def test_graph_backend_contract(make_backend):
         assert_same_properties(relationship.properties, expected.relationships[0].properties)
     finally:
         backend.delete_graph(graph)
-    deleted = backend.read_graph(graph)
-    assert deleted is None or not deleted.entities
+    with pytest.raises(StorageError):
+        backend.read_graph(graph)  # doesn't exist anymore
+    backend.delete_graph(graph)  # deleting a graph that doesn't exist does nothing
+    with pytest.raises(StorageError):
+        backend.read_graph(graph)  # reading didn't create it either
 
 
 @pytest.mark.parametrize("make_backend", METADATA_BACKENDS)
@@ -147,6 +163,9 @@ def test_metadata_backend_contract(make_backend):
     try:
         backend.create_kg_version(KnowledgeGraphVersion(kg_name=kg, agent="AutoCimKG", start_proc_ts=TS,
                                                         end_proc_ts=TS))
+        with pytest.raises(StorageError):  # KG version names are unique
+            backend.create_kg_version(KnowledgeGraphVersion(kg_name=kg, agent="AutoCimKG", start_proc_ts=TS,
+                                                            end_proc_ts=TS))
         backend.create_logs(kg, [Log(ts=TS, logger_name="autocimkg", log_level="INFO", message="Entity created")])
         backend.create_data_sources([Document(name=source, doc_type="scientific article", content="Abstract ...",
                                               authors=["Doe, Jane", "John Doe"], language="eng"),

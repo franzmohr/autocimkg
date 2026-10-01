@@ -1,8 +1,8 @@
 from .documents_distiller import DocumentsDistiller
 from .autocimkg_core import AutoCimKGCore
-from .utils import create_chat_model, create_embeddings_model, get_model_config
+from .utils import create_chat_model, create_embeddings_model, get_model_config, StorageError
 __all__ = ['DocumentsDistiller', 'GraphIntegrator', 'AutoCimKGCore',
-           'create_chat_model', 'create_embeddings_model', 'get_model_config']
+           'create_chat_model', 'create_embeddings_model', 'get_model_config', 'StorageError']
 
 
 def __getattr__(name: str):

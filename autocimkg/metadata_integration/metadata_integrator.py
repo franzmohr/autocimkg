@@ -5,6 +5,7 @@ from typing import Union
 
 from ..models import Document, Ontology, KnowledgeGraphVersion, Log
 from .base import BaseMetadataIntegrator
+from ..utils.errors import storage_error
 
 class MetadataIntegrator(BaseMetadataIntegrator):
     """
@@ -67,8 +68,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.init_db()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -93,8 +94,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.create_kg_version()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -117,8 +118,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_kg_version()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -147,8 +148,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return kg_versions
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()  # even w/o change!
+            raise storage_error(self.logger, "MetadataIntegrator.read_kg_versions()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -175,8 +176,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.create_logs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -205,8 +206,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return logs
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.read_logs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -229,8 +230,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_logs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -259,8 +260,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.create_data_sources()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -291,8 +292,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return documents
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.read_data_sources()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -326,8 +327,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return documents
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.read_data_sources_by_name()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -350,8 +351,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_data_sources_by_name()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -372,8 +373,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_data_sources()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -399,8 +400,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.create_ontology()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -429,8 +430,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return ontologies
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.read_ontologies()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -453,8 +454,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_ontologies()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -479,8 +480,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.create_llm_config()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -509,8 +510,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return llm_configs
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.read_llm_configs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -533,8 +534,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_llm_configs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -559,8 +560,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.create_autocimkg_config()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -589,8 +590,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             return autocimkg_configs
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.read_autocimkg_configs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()
@@ -613,8 +614,8 @@ class MetadataIntegrator(BaseMetadataIntegrator):
 
             connection.commit()
         except Exception as e:
-            self.logger.exception("PostgreSQL communication failed")
             if connection: connection.rollback()
+            raise storage_error(self.logger, "MetadataIntegrator.delete_autocimkg_configs()", e)
         finally:
             if cursor: cursor.close()
             if connection: connection.close()

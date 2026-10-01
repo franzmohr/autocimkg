@@ -12,8 +12,8 @@ class BaseMetadataIntegrator(ABC):
 
     Contract: metadata is stored per KG version (kg_name), except data sources (documents), which are shared
     across versions. Whatever is created can be read back unchanged (incl. timestamps, a document's content as text
-    or list of text blocks, and nested dicts) and deleted again.
-    Errors are logged via self.logger and don't interrupt the program flow; reading then returns None.
+    or list of text blocks, and nested dicts) and deleted again. Creating a KG version whose name already exists
+    is an error. A failed operation raises a StorageError (and is logged via self.logger).
     """
 
     def __init__(self):

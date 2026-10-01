@@ -41,6 +41,7 @@ Changes compared to the original version (2026-09):
 - Interchangeable storage backends: interfaces for graph and metadata storage, implemented by the existing PostgreSQL/Apache AGE connectors, whose drivers are imported on first use (see [Storage Backends](#storage-backends)); modified files: 'README.md', 'autocimkg/\_\_init\_\_.py', 'autocimkg/graph_integration/\_\_init\_\_.py', 'autocimkg/graph_integration/graph_integrator.py', 'autocimkg/metadata_integration/\_\_init\_\_.py', 'autocimkg/metadata_integration/metadata_integrator.py'; new files: 'autocimkg/graph_integration/base.py', 'autocimkg/metadata_integration/base.py', 'tests/test_storage.py'.
 - Fixes in the PostgreSQL/Apache AGE connectors: graphs w/ entities or relationships w/o embeddings can be read again, a document's content stored as list of text blocks is read back as list, and author names may contain commas (earlier stored lists and authors included); modified files: 'autocimkg/graph_integration/graph_integrator.py', 'autocimkg/metadata_integration/metadata_integrator.py'.
 - Further fixes: ```build_graph()``` no longer fails at the end when a log message spans several lines (e.g. the traceback of a retried LLM call), and names and properties w/ special characters (e.g. backslashes, quotes or '$$') are written to and read from Apache AGE unchanged instead of making the whole write fail; modified files: 'autocimkg/autocimkg_core.py', 'autocimkg/graph_integration/graph_integrator.py'; new files: 'tests/test_logging.py'.
+- The storage connectors raise a ```StorageError``` when an operation fails, instead of only logging it (and returning None when reading); reading or deleting a graph no longer creates it, if missing; modified files: 'README.md', 'autocimkg/\_\_init\_\_.py', 'autocimkg/utils/\_\_init\_\_.py', 'autocimkg/graph_integration/base.py', 'autocimkg/graph_integration/graph_integrator.py', 'autocimkg/metadata_integration/base.py', 'autocimkg/metadata_integration/metadata_integrator.py', 'tests/test_storage.py'; new files: 'autocimkg/utils/errors.py'.
 ## License Notice
 This software is based on and includes modified components of the [iText2KG library (v0.0.7)](https://github.com/AuvaLab/itext2kg), which is licensed under the GNU Lesser General Public Library (v2.1).
 The extensive changes and enhancements made are reflected in all files of the reused codebase and correspond to the overview given above. 
@@ -130,6 +131,15 @@ An exemplary utilisation of AutoCimKG is provided in the ```tutorial```.
 The KG construction itself works on ```KnowledgeGraph``` objects and doesn't depend on a database. 
 Storing graphs and metadata is the task of two interchangeable connectors, defined as interfaces: ```BaseGraphIntegrator``` (graphs) and ```BaseMetadataIntegrator``` (metadata repository). 
 ```GraphIntegrator``` and ```MetadataIntegrator``` implement them for PostgreSQL/Apache AGE. Their database drivers are only imported when these classes are used.
+A failed operation (e.g. an unreachable database, reading a graph that doesn't exist or creating a KG version twice) raises a ```StorageError``` for every backend, w/ the driver's original error as its cause:
+```python
+from autocimkg import StorageError
+
+try:
+    kg = graph_integrator.read_graph("kg_v1")
+except StorageError as e:
+    print(e)  # e.g. "Reading graph 'kg_v1' failed: LookupError: graph doesn't exist"
+```
 <br/>
 <br/>
 A further backend (e.g. Delta tables on Databricks) subclasses both interfaces; their docstrings describe what a backend has to preserve. 

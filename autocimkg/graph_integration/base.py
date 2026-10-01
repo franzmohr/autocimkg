@@ -14,7 +14,8 @@ class BaseGraphIntegrator(ABC):
     names and properties (embeddings, generated and invalidated timestamps, agents and origins; embeddings and
     timestamps may be None). Relationships refer
     to their start and end entity by label and name.
-    Errors are logged via self.logger and don't interrupt the program flow; reading then returns None.
+    A failed operation raises a StorageError (and is logged via self.logger), incl. reading a graph that doesn't
+    exist; deleting a graph that doesn't exist does nothing.
     """
 
     def __init__(self):
@@ -35,7 +36,7 @@ class BaseGraphIntegrator(ABC):
     @abstractmethod
     def delete_graph(self, graph_name: str):
         """
-        Deletes a named graph incl. all of its entities and relationships.
+        Deletes a named graph incl. all of its entities and relationships (if present).
 
         :param graph_name: Graph name
         """
@@ -47,6 +48,7 @@ class BaseGraphIntegrator(ABC):
 
         :param graph_name: Graph name
         :returns: KnowledgeGraph containing the graph structure
+        :raises StorageError: Graph doesn't exist or can't be read
         """
 
     @abstractmethod

@@ -109,11 +109,13 @@ def sample_graph() -> KnowledgeGraph:
     expert, skill = entity("Expert", "jane doe", 1), entity("Competence", SKILL, 2)
     skill.properties.invalidated_at_time = TS
     skill.properties.origins = ["O'Brien's \"paper\" $1.pdf", "doc.pdf"]
-    company = Entity(label="Company", name="acme")  # w/o embeddings and timestamps
-    knows = Relationship(startEntity=expert, endEntity=skill, name="knows",
+    company = Entity(label="3D Company", name="acme")  # w/o embeddings and timestamps
+    company.process()  # label (as produced by the pipeline) starts w/ a digit
+    knows = Relationship(startEntity=expert, endEntity=skill, name="1st knows",
                          properties=RelationshipProperties(embeddings=np.random.default_rng(3).random(8),
                                                            generated_at_time=TS, agents=["AutoCimKG"],
                                                            origins=["doc.pdf"]))
+    knows.process()
     return KnowledgeGraph(entities=[expert, skill, company], relationships=[knows])
 
 
@@ -141,7 +143,7 @@ def test_graph_backend_contract(make_backend):
 
         [relationship] = actual.relationships
         assert (relationship.startEntity.name, relationship.name, relationship.endEntity.name) == \
-               ("jane doe", "knows", SKILL)
+               ("jane doe", "_1st_knows", SKILL)
         assert_same_properties(relationship.properties, expected.relationships[0].properties)
     finally:
         backend.delete_graph(graph)

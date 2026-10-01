@@ -30,6 +30,7 @@ class Entity(BaseModel):
     def process(self):
         # Replace spaces, dashes, periods, and '&' in names with underscores or 'and'.
         self.label = re.sub(r'[^a-zA-Z0-9]', '_', self.label).replace("&", "and")
+        if self.label[:1].isdigit(): self.label = "_" + self.label  # labels must not start w/ a digit
         self.name = self.name.lower().replace("_", " ").replace("-", " ").replace('"', " ").strip()
     
     def embed_entity(self,
@@ -63,7 +64,8 @@ class Relationship(BaseModel):
     def process(self):
         # Replace spaces, dashes, periods, and '&' in names with underscores or 'and'.
         self.name = re.sub(r'[^a-zA-Z0-9]', '_', self.name).replace("&", "and")
-            
+        if self.name[:1].isdigit(): self.name = "_" + self.name  # relationship names must not start w/ a digit
+
     def embed_relationship(self, embeddings_function:Callable[[str], np.array]):
         self.process()
         self.properties.embeddings = embeddings_function(self.name)

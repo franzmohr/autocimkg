@@ -12,7 +12,8 @@ class BaseGraphIntegrator(ABC):
 
     Contract: writing a graph and reading it back yields the same entities and relationships, incl. their labels,
     names and properties (embeddings, generated and invalidated timestamps, agents and origins; embeddings and
-    timestamps may be None). Relationships refer
+    timestamps may be None). Labels and relationship names are identifiers as produced by Entity.process() and
+    Relationship.process() (letters, digits and '_', not starting w/ a digit). Relationships refer
     to their start and end entity by label and name.
     A failed operation raises a StorageError (and is logged via self.logger), incl. reading a graph that doesn't
     exist; deleting a graph that doesn't exist does nothing.
